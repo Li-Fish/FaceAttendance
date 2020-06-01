@@ -1,5 +1,7 @@
 package com.example.myapplication;
 
+import androidx.appcompat.widget.TintTypedArray;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -7,9 +9,12 @@ import java.io.OutputStream;
 import java.net.Socket;
 
 public class SocketUtil {
+    static String serverName;
+    static int port;
+    static int groupID;
+
+
     public static String[] sendData(byte[] data) {
-        String serverName = "192.168.123.136";
-        int port = 11234;
         String rst[] = new String[2];
 
         FishSocket client = new FishSocket(serverName, port);
@@ -17,13 +22,12 @@ public class SocketUtil {
         byte[] type = new byte[1];
         type[0] = '0';
 
-        byte[] group_id = new byte[1];
-        group_id[0] = 1;
+        byte[] group_id = FishSocket.intToBytes(groupID);
 
         client.send(type);
         client.send(group_id);
 
-        String code = "mGHcTwFzkeZglvxa";
+        String code = "jECysvTpOkhQjsQg";
         client.send(code.getBytes());
         client.send(data);
 
@@ -36,6 +40,30 @@ public class SocketUtil {
         client.close();
 
         return rst;
+    }
+
+    public static boolean testServer(String inputIP, String inputPort, String inputGroupID, String code) {
+        try {
+            serverName = inputIP;
+            port = Integer.parseInt(inputPort);
+
+            FishSocket client = new FishSocket(serverName, port);
+
+            byte[] type = new byte[1];
+            type[0] = '2';
+            groupID = Integer.parseInt(inputGroupID);
+            byte[] group_id = FishSocket.intToBytes(groupID);
+            client.send(type);
+            client.send(group_id);
+            client.send(code.getBytes());
+            String rst = client.raw_recv();
+
+            return rst.equals("OK");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }
 
@@ -58,16 +86,20 @@ class FishSocket {
         }
     }
 
+    public static byte[] intToBytes(int num) {
+        byte[] rst = new byte[4];
+
+        rst[0] = (byte) ((num >> 24) & 0x000FF);
+        rst[1] = (byte) ((num >> 16) & 0x000FF);
+        rst[2] = (byte) ((num >> 8) & 0x000FF);
+        rst[3] = (byte) ((num >> 0) & 0x000FF);
+
+        return rst;
+    }
+
     void send(byte[] data) {
         try {
-            byte[] lenData = new byte[4];
-            int len = data.length;
-
-            lenData[0] = (byte) ((len >> 24) & 0x000FF);
-            lenData[1] = (byte) ((len >> 16) & 0x000FF);
-            lenData[2] = (byte) ((len >> 8) & 0x000FF);
-            lenData[3] = (byte) ((len >> 0) & 0x000FF);
-
+            byte[] lenData = intToBytes(data.length);
             outToServer.write(lenData);
             outToServer.write(data);
             outToServer.flush();
